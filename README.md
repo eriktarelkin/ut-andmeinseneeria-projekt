@@ -1,14 +1,22 @@
 # [Präänikud] — [Individuaalne Spotify trendide näidik]
 
+Uurime, kas kasutaja muusikakuulamise mustreid kirjeldab paremini lühiajaline kontekst (päevaaeg: hommik, lõuna, õhtu) või pikemaajaline kontekst (kuu).
+Selle analüüsi tulemusi saab kasutada personaalsemate muusikasoovituste, automaatsete playlistide ja kasutajakäitumise paremaks mõistmiseks.
+
 ## Äriküsimus
 
+Milline ajaline tegur mõjutab muusikastiili valikut täpsemalt: kellaeg või igakuine kuulamistrend?
 [Kirjelda ühe-kahe lausega, millise andmetega seotud probleemi te lahendate ja kes sellest kasu saab.]
 
 **Mõõdikud:**
 
-1. [Esimene KPI või mõõdik — näiteks: päevane müük poe kohta]
-2. [Teine KPI või mõõdik]
-3. [Kolmas KPI või mõõdik — vabatahtlik]
+1. Žanrijaotuse erinevus päevaaegade lõikes (per aasta)
+   #kui kuulatud žanrid erinevad päevaaegade lõikes palju, tuleks teha soovitused päevaaja kaupa.
+   #ehk kui hommikul 60% lofit ja õhtul 0% lofit, siis on selge, et tuleb päevaaja kaupa soovitada, sest päevaaeg mõjutab käitumist.
+   #märkimisväärne mõõdik on näiteks 20%-line kõikumine erinevate ajahetkede vahel.
+2. Žanrijaotuse erinevus üldisest aasta-kuulamisest kuude lõikes
+   #kas kuude kaupa muutuvad kuulatud žanrid - ehk jaanuari žanri vahe kõikide kuude kuulamisega, veebruari vahe jne.
+3. Kahes kontekstis žanri jaotuse hälve võrdlus #kõrgemad väärtused näitavad selle konteksti tugevamat mõju muusikavalikule.
 
 ## Arhitektuur
 
