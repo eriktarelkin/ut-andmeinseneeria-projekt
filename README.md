@@ -20,16 +20,15 @@ Milline ajaline tegur mõjutab muusikastiili valikut täpsemalt: kellaeg või ig
 
 ## Arhitektuur
 
-```mermaid
 flowchart LR
-    source[Andmeallikas] --> ingest[Sissevõtt]
-    ingest --> staging[(staging)]
-    staging --> transform[Transformatsioon]
-    transform --> mart[(mart)]
-    mart --> dashboard[Näidikulaud]
-```
-
-Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
+    I[Staatiline asukohtade dimensioon] --> B[Python ingest]
+    A[Spotify-API] --> B[Python ingest]
+    F[Cron scheduler] --> B[Python ingest]
+    B --> C[(PostgreSQL staging)]
+    C --> D[SQL transformatsioon]
+    D --> E[(PostgreSQL mart)]
+    E --> F[Streamlit näidikulaud]
+    E --> G[Andmekvaliteedi testid]
 
 ## Andmestik
 
