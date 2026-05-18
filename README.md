@@ -20,6 +20,7 @@ Milline ajaline tegur mõjutab muusikastiili valikut täpsemalt: kellaeg või ig
 
 ## Arhitektuur
 
+```mermaid
 flowchart LR
     I[Staatiline asukohtade dimensioon] --> B[Python ingest]
     A[Spotify-API] --> B[Python ingest]
@@ -29,6 +30,7 @@ flowchart LR
     D --> E[(PostgreSQL mart)]
     E --> F[Streamlit näidikulaud]
     E --> G[Andmekvaliteedi testid]
+```
 
 ## Andmestik
 
