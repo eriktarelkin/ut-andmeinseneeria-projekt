@@ -22,14 +22,15 @@ Milline ajaline tegur mõjutab muusikastiili valikut täpsemalt: kellaeg või ig
 
 ```mermaid
 flowchart LR
-    I[Staatiline asukohtade dimensioon] --> B[Python ingest]
+    I[Staatiline artistide-žanrite vastavuse dimensioon] --> B[Python ingest]
+    J[Staatiline päevaaegade vastavuse dimensioon] --> B[Python ingest]
     A[Spotify-API] --> B[Python ingest]
-    F[Cron scheduler] --> B[Python ingest]
     B --> C[(PostgreSQL staging)]
     C --> D[SQL transformatsioon]
     D --> E[(PostgreSQL mart)]
     E --> F[Streamlit näidikulaud]
     E --> G[Andmekvaliteedi testid]
+    H[Cron scheduler] --> B[Python ingest]
 ```
 
 ## Andmestik
