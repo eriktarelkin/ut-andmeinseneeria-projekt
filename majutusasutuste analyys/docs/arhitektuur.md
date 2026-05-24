@@ -4,50 +4,93 @@
 
 Millises Eesti piirkonnas on kõige suurem potentsiaal avada uus majutusasutus, arvestades nõudlust, nõudluse kasvu ja tasuvust?
 
+---
+
 ## Mõõdikud
 
-1. Kui suur on piirkonnas nõudluse kasv? (näitab, kas piirkond on alles arenev ehk potentsiaalselt paremad hinnad ostmisel)
+### 1. Nõudluse kasv piirkonnas
 
-CAGR - (ööbimiste arv 2025 / ööbimiste arv 2022 ) astmes 1/3 - 1
+Eesmärk: hinnata, kas piirkond on kasvav ja investeerimiseks atraktiivne.
 
-2.  Millises Eesti piirkonnas on kõige suurem potentsiaal?
+CAGR = (ööbimiste arv 2025 / ööbimiste arv 2022)^(1/3) - 1
 
-1.1. Kui suur on ööbijate arv piirkonnas? (näitab, kas piirkonnas on üldse turgu)
+---
 
-Päring tabelist majutuskohtade mahutavus: Ööbimiste arv
+### 2. Piirkondade potentsiaali hindamine
 
-1.2. Kui suur on piirkonnas nõudluse kasv? (näitab, kas piirkond on alles arenev ehk potentsiaalselt paremad hinnad asutusele)
+#### 2.1 Turumaht (ööbijate arv)
 
-CAGR - (ööbimiste arv 2025 / ööbimiste arv 2022 ) astmes 1/3 - 1
+Eesmärk: hinnata, kas piirkonnas on piisav nõudlus.
 
-1.3. Milline on nõudlus piirkonniti? (näitab, kas piirkonnas oleks vaja ööbimiste arvu arvestades veel majutuskohti)
+- Andmeallikas: majutuskohtade mahutavus
+- Näitaja: ööbimiste arv
 
-Ööbimised/voodikohtade arv
+---
 
-1.4 Milline on rahaline potentsiaal piirkonniti?
+#### 2.2 Nõudluse kasv
 
-Ööbimiste arv * ööpäeva keskmine maksumus
+Eesmärk: hinnata piirkonna arengut.
 
-Tulemus = W1 * Ööbimiste arv + W2 * Nõudluse kasv (CAGR) + W3 ​* Nõudlus + W4 * Rahaline potentsiaal
+CAGR = (ööbimiste arv 2025 / ööbimiste arv 2022)^(1/3) - 1
+
+---
+
+#### 2.3 Nõudluse ja pakkumise suhe
+
+Eesmärk: hinnata majutuskohtade piisavust.
+
+Nõudlus = ööbimised / voodikohtade arv
+
+---
+
+#### 2.4 Rahaline potentsiaal
+
+Eesmärk: hinnata piirkonna majanduslikku atraktiivsust.
+
+Rahaline potentsiaal = ööbimiste arv * ööpäeva keskmine maksumus
+
+---
+
+## 3. Koguskoor (lõplik hindamine)
+
+Tulemus =
+    W1 * Ööbimiste arv +
+    W2 * Nõudluse kasv (CAGR) +
+    W3 * Nõudlus +
+    W4 * Rahaline potentsiaal
+    
+---
 
 ## Tabelid:
 
-1. Majutuskohtade mahutavus |
+#### 1. Majutuskohtade mahutavus |
 https://andmed.stat.ee/et/stat/majandus__turism-ja-majutus__majutus/TU110/table/tableViewLayout2
 
 Näitajad:
-Majutuskohtade arv
-Tubade arv
-Voodikohtade arv
-Tubade täitumuse %
-Voodikohtade täitumise %
-Ööpäeva keskmine maksumus
-Maakond
-Vaatlusperiood (aasta)
-Majutatute arv (mitu inimest jäi ööseks)
-Ööbimiste arv (mitu ööd nad ööbisid)
 
-2. Staatiline tabel - äriline hinnang piirkonnale
+- Majutuskohtade arv
+
+- Tubade arv
+
+- Voodikohtade arv
+
+- Tubade täitumuse %
+
+- Voodikohtade täitumise %
+
+- Ööpäeva keskmine maksumus
+
+- Maakond
+
+- Vaatlusperiood (aasta)
+
+- Majutatute arv (mitu inimest jäi ööseks)
+
+- Ööbimiste arv (mitu ööd nad ööbisid)
+
+---
+
+#### 2. Staatiline tabel - äriline hinnang piirkonnale
 
 |kategooria_id|	kategooria_nimi|	soovitus|	selgitus|
 |---------|------|--------------|------|
@@ -56,6 +99,8 @@ Majutatute arv (mitu inimest jäi ööseks)
 |3	|Küllastunud turg|	VÄLDI| pakkumine ületab nõudlust, kasv puudub|
 |4	|Stabiilne rahavoog|	RAHAVOO STRATEEGIA|	stabiilne turg, vähe kasvu, aga kindel täituvus|
 
+---
+
 ## Andmeallikad
 
 | Allikas | Tüüp | Ajas muutuv? | Roll |
@@ -63,6 +108,7 @@ Majutatute arv (mitu inimest jäi ööseks)
 | Majutuskohtade mahutavus | API | Jah, iga aasta | Info majutuskohtade mahutavusest |
 | Ärilise hinnangu defineerimine | dim-tabel | Ei, staatiline | Abitabel piirkonnas sobivuse hindamiseks|
 
+---
 
 ## Andmevoog
 
@@ -77,6 +123,7 @@ flowchart LR
     E --> G[Andmekvaliteedi testid]
     H[Cron scheduler] --> B[Python ingest]
 ```
+---
 
 ## Andmebaasi kihid
 
@@ -84,6 +131,8 @@ flowchart LR
 |------|------|
 | `staging` | Hoiab allika andmeid töötlemata kujul. |
 | `mart` | Hoiab transformeeritud ja äriloogikat sisaldavaid tabeleid. |
+
+---
 
 ## Tööjaotus
 
@@ -93,6 +142,8 @@ flowchart LR
 | Transformatsioonide omanik | Kirjutab mart kihi mudelid ja mõõdikute arvutuse | Elin ja Hanna |
 | Kvaliteedi omanik | Kirjutab testid ja vaatab läbi ebaõnnestunud kontrollid | Hanna ja Erik |
 | Näidikulaua omanik | Ehitab näidikulaua ja seob selle äriküsimusega | Elin ja Hanna ja Erik |
+
+---
 
 ## Riskid
 
