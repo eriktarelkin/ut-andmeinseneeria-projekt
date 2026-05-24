@@ -99,11 +99,9 @@ flowchart LR
 | Risk | Mõju | Maandus |
 |------|------|---------|
 | API andmed uuenevad kord aastas | Keeruline on testida pidevat ajas uuenemist ja seega andmetoru kvaliteeti | Lisame juurde testandmeid ajas uuenemise testimiseks |
-
 | Mõõdikute tulemus ei vasta reaalsele olukorrale | Tulemust ei saa päriselus rakendada | Mõõdikute kaalud tuleb ümber teha|
-
 | Leian paremad algallikad | Pean mõõdikud ümber tegema, sest enam pole vaja arvutada | Otsida kohe põhjalikumalt andmetabeleid|
 
 ## Privaatsus ja turve
 
-Porjektis ei esine tundlikke andmeid, seega eriliike andmete kaitset ei ole vaja. Isikuandmeid ei töötle. Andmebaasi paroolid peavad tule .env failist. Git-i projekti nägemise õigused on jagatud ainult valitud kasutajatele.
+Projektis ei esine tundlikke andmeid, seega eriliike andmete kaitset ei ole vaja. Isikuandmeid ei töötle. Andmebaasi paroolid peavad tule .env failist. Git-i projekti nägemise õigused on jagatud ainult valitud kasutajatele.
