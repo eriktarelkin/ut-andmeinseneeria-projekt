@@ -51,7 +51,7 @@ Rahaline potentsiaal = ööbimiste arv * ööpäeva keskmine maksumus
 
 ---
 
-## 3. Koguskoor (lõplik hindamine)
+### 3. Koguskoor (lõplik hindamine)
 
 Tulemus =
     W1 * Ööbimiste arv +
