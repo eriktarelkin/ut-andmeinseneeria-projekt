@@ -36,50 +36,50 @@ services:
   # Airflow-põhise stacki puhul asenda selle sektsioon airflow/* teenustega
   # (vaata naidisprojekt-ilmaandmed-dbt-ja-airflow/compose.yml).
   #
-   pipeline:
-     build:
-       context: .
-       dockerfile: Dockerfile.app
-     container_name: majutusasutuste-pipeline #seda rida muutsin mallis
-     env_file:
-       - .env
-     environment:
-       DB_HOST: db
-       DB_PORT: "5432"
-       DB_USER: ${POSTGRES_USER}
-       DB_PASSWORD: ${POSTGRES_PASSWORD}
-       DB_NAME: ${POSTGRES_DB}
-     depends_on:
-       db:
-         condition: service_healthy
-     volumes:
-       - ./scripts:/app/scripts
-     working_dir: /app
-     tty: true
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: majutusasutuste-pipeline #seda rida muutsin mallis
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/app/scripts
+    working_dir: /app
+    tty: true
 
   # --- Näidikulaud ---
   # Streamliti põhine näide. Superset-põhise stacki puhul vaata
   # naidisprojekt-ilmaandmed-dbt-ja-airflow/compose.yml.
   #
-   dashboard:
-     build:
-       context: .
-       dockerfile: Dockerfile.app
-     container_name: majutusasutuste-dashboard
-     env_file:
-       - .env
-     environment:
-       DB_HOST: db
-       DB_PORT: "5432"
-       DB_USER: ${POSTGRES_USER}
-       DB_PASSWORD: ${POSTGRES_PASSWORD}
-       DB_NAME: ${POSTGRES_DB}
-     depends_on:
-       db:
-         condition: service_healthy
-     ports:
-       - "${DASHBOARD_PORT_HOST:-8501}:8501"
-     command: ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0"]
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: majutusasutuste-dashboard
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${DASHBOARD_PORT_HOST:-8501}:8501"
+    command: ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0"]
 
 volumes:
   pgdata:

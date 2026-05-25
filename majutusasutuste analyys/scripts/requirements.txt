@@ -1,0 +1,7 @@
+pandas==2.3.3
+streamlit==1.51.0
+numpy==2.4.6
+altair==5.5.0
+streamlit-autorefresh==1.0.1
+requests==2.34.2
+psycopg2-binary==2.9.10
