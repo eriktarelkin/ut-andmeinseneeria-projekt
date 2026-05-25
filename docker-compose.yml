@@ -58,9 +58,7 @@ services:
     tty: true
 
   # --- Näidikulaud ---
-  # Streamliti põhine näide. Superset-põhise stacki puhul vaata
-  # naidisprojekt-ilmaandmed-dbt-ja-airflow/compose.yml.
-  #
+
   dashboard:
     build:
       context: .
@@ -74,12 +72,26 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
+      DASHBOARD_AUTOREFRESH_SECONDS: ${DASHBOARD_AUTOREFRESH_SECONDS:-15}
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./dashboard:/app/dashboard
+    working_dir: /app
+    command:
+      [
+        "streamlit",
+        "run",
+        "dashboard/app.py",
+        "--server.address=0.0.0.0",
+        "--server.port=8501",
+        "--server.headless=true"
+      ]
     ports:
       - "${DASHBOARD_PORT_HOST:-8501}:8501"
-    command: ["streamlit", "run", "dashboard/app.py", "--server.address=0.0.0.0"]
+
 
 volumes:
   pgdata:
+    name: majutusasutuste-pgdata
