@@ -1,0 +1,9 @@
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
+*.log
+.streamlit/
+target/
+dbt_packages/
+logs/
