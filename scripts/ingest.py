@@ -11,9 +11,7 @@ if __name__ == "__main__":
     df = ingest_api_data()
     print(df.head())
 
-#täpselt veel ei tea mida see kõik teeb
-# 
-'''import os
+import os
 import requests
 import json
 import psycopg2
@@ -24,7 +22,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from __future__ import annotations
 
-class UserFacingError(RuntimeError):
+SCRIPT_DIR = Path(__file__).resolve().parent
+DIMENSIONS_SQL = SCRIPT_DIR / "00_seed_dimensions.sql"
+TRANSFORM_SQL = SCRIPT_DIR / "01_transform.sql"
+QUALITY_SQL = SCRIPT_DIR / "02_quality_tests.sql"
+
+#täpselt veel ei tea mida see kõik teeb
+
+'''class UserFacingError(RuntimeError):
     """Viga, mille sõnum sobib otse õppijale näitamiseks."""
 
 def log(message: str) -> None:
