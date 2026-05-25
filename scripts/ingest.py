@@ -1,4 +1,19 @@
-import os
+import requests
+import pandas as pd
+from config import API_URL
+
+def ingest_api_data():
+    data = requests.get(API_URL).json()
+    df = pd.DataFrame(data)
+    return df
+
+if __name__ == "__main__":
+    df = ingest_api_data()
+    print(df.head())
+
+#täpselt veel ei tea mida see kõik teeb
+# 
+'''import os
 import requests
 import json
 import psycopg2
@@ -49,4 +64,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main())'''
