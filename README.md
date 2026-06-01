@@ -1,24 +1,24 @@
-# [Tiimi_nimi] — [Majutusasutuste analüüs]
+# Majutusasutuste analüüs
 
 ## Äriküsimus
 
-[Kirjelda ühe-kahe lausega, millise andmetega seotud probleemi te lahendate ja kes sellest kasu saab.]
+Millises Eesti piirkonnas on suurim potentsiaal avada uus majutusasutus, arvestades nõudlust, täituvust ja rahalist potentsiaali?
 
 **Mõõdikud:**
 
-1. [Esimene KPI või mõõdik — näiteks: päevane müük poe kohta]
-2. [Teine KPI või mõõdik]
-3. [Kolmas KPI või mõõdik — vabatahtlik]
+1. **Turumaht** — ööbimiste arv piirkonnas (nõudluse suurus)
+2. **Nõudluse/pakkumise suhe** — ööbimised jagatud voodikohtade arvuga (kui täis majutuskohad on)
+3. **Rahaline potentsiaal** — ööbimiste arv × ööpäeva keskmine maksumus
 
 ## Arhitektuur
 
 ```mermaid
 flowchart LR
-    source[Andmeallikas] --> ingest[Sissevõtt]
-    ingest --> staging[(staging)]
-    staging --> transform[Transformatsioon]
-    transform --> mart[(mart)]
-    mart --> dashboard[Näidikulaud]
+    A[Statistikamet TU110 API] --> B[Python ingest]
+    B --> C[(staging.raw_tu110)]
+    C --> D[SQL transformatsioon]
+    D --> E[(mart.fact_skoor)]
+    E --> F[Streamlit näidikulaud]
 ```
 
 Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
@@ -27,100 +27,77 @@ Täpsem kirjeldus: [`docs/arhitektuur.md`](docs/arhitektuur.md)
 
 | Allikas | Tüüp | Ajas muutuv? | Roll |
 |---------|------|--------------|------|
-| [Andmeallika nimi] | [API / fail / andmebaas] | Jah, [iga tund / päevas / muu] | Põhiandmevoog |
-| [Teise allika nimi] | [seed / dim-tabel] | Ei, staatiline | Kõrvaltabel |
+| Statistikamet TU110 | API | Jah, kord aastas | Majutusstatistika (ööbimised, täitumus, hinnad) |
+| `dim_ariline_hinnang` | seed-tabel | Ei, staatiline | Ärikategooriate selgitused (4 kategooriat) |
 
 ## Stack
 
 | Komponent | Tööriist |
 |-----------|---------|
-| Sissevõtt | [Python / Airflow / muu] |
-| Transformatsioon | [SQL / dbt / muu] |
-| Andmehoidla | PostgreSQL |
-| Näidikulaud | [Superset / Streamlit / muu] |
-| Orkestreerimine | [Airflow / cron / muu] |
+| Sissevõtt | Python (`scripts/ingest.py`) |
+| Transformatsioon | SQL (`scripts/01_transform.sql`) |
+| Andmehoidla | PostgreSQL (pgDuckDB) |
+| Näidikulaud | Streamlit |
+| Orkestreerimine | Docker Compose + shell script |
 
 ## Käivitamine
 
 ```bash
 # 1. Klooni repo ja liigu kausta
 git clone <repo-url>
-cd <projekti-kaust>
+cd ut-andmeinseneeria-projekt
 
 # 2. Kopeeri keskkonnamuutujad
 cp .env.example .env
-# Muuda .env failis paroolid ja muud seaded vastavalt vajadusele
 
-# 3. Käivita teenused
+# 3. Käivita teenused — pipeline käivitub automaatselt
 docker compose up -d --build
-
-# 4. [Vabatahtlik: käivita sissevõtt käsitsi esimesel korral]
-# docker compose exec pipeline python scripts/run_pipeline.py run-all
 ```
 
-Airflow (kui kasutatakse): http://localhost:8080 (kasutaja: airflow / parool: airflow)
-Näidikulaud: http://localhost:[PORT]
+Näidikulaud: **http://localhost:8501**
 
-## Saladused ja konfiguratsioon
+Pipeline käivitab andmete laadimise ja transformatsiooni automaatselt (~30 sekundit pärast käivitamist). Pipeline'i käsitsi uuesti käivitamiseks:
 
-Kõik saladused (paroolid, API võtmed, andmebaasi URL-id) on `.env` failis. Repos on ainult `.env.example`, mis näitab vajalike muutujate struktuuri ilma tegelike väärtusteta. Päris `.env` faili ei tohi GitHubi panna - see on `.gitignore`-s.
+```bash
+docker compose exec pipeline python scripts/run_pipeline.py run-all
+```
 
-Vajalikud muutujad:
+## Konfiguratsioon
 
-| Muutuja | Tähendus | Näide |
-|---------|----------|-------|
-| `DB_PASSWORD` | PostgreSQL parool | (saladus) |
-| `[teised]` | ... | ... |
+Kõik seaded on `.env` failis. Repos on ainult `.env.example`.
+
+| Muutuja | Tähendus | Vaikeväärtus |
+|---------|----------|--------------|
+| `POSTGRES_PASSWORD` | Andmebaasi parool | `praktikum` |
+| `DB_PORT_HOST` | Andmebaasi port hostis | `55432` |
+| `DASHBOARD_PORT_HOST` | Näidikulaua port | `8501` |
+| `API_URL` | Statistikaameti TU110 API | (vt `.env.example`) |
 
 ## Andmevoog lühidalt
 
-1. **Sissevõtt** — [Kirjelda, kuidas andmed allikast kätte saadakse]
-2. **Laadimine** — Andmed laaditakse `staging` kihti
-3. **Transformatsioon** — [Kirjelda peamised arvutused ja mudelid]
-4. **Testimine** — [Mitu] andmekvaliteedi testi kontrollivad korrektsust
-5. **Näidikulaud** — [Kirjelda lühidalt, mida näidikulaud näitab]
-
-## Andmekvaliteedi testid
-
-Projekt kontrollib järgmist:
-
-1. [Test 1 - nt: kasutajate ID on unikaalne]
-2. [Test 2 - nt: tellimuse summa pole null]
-3. [Test 3 - nt: kuupäev jääb vahemikku 2020-2026]
-[Lisa rohkem, kui sul on]
-
-Testide tulemused: [kuhu salvestatakse / kuidas vaadata]
+1. **Sissevõtt** — `ingest.py` pärib kõik 8 näitajat TU110 API-st (JSON-stat2 formaat) ja salvestab `staging.raw_tu110` tabelisse
+2. **Transformatsioon** — SQL arvutab kolm mõõdikut, normaliseerib need 0–1 skaalale ja annab igale piirkonnale lõpliku skoori ja ärikategooria
+3. **Näidikulaud** — Streamlit kuvab piirkondade edetabeli, portfelligraafiku ja ärilise soovituse
 
 ## Projekti struktuur
 
 ```
 .
 ├── README.md
-├── compose.yml
+├── docker-compose.yml
+├── Dockerfile.app
 ├── .env.example
 ├── .gitignore
 ├── docs/
-│   ├── arhitektuur.md      ← nädal 1 väljund
-│   └── progress.md         ← nädal 2 väljund
-└── ...                     ← ülejäänud projektifailid
+│   ├── arhitektuur.md
+│   └── progress.md
+├── init/
+│   └── schema.sql              ← andmebaasi skeem
+└── scripts/
+    ├── ingest.py               ← andmete sissevõtt API-st
+    ├── run_pipeline.py         ← pipeline orkestreerimine
+    ├── run_pipeline.sh         ← automaatne käivitus konteineris
+    ├── 00_seed.sql             ← ärikategooriate dimensioon
+    ├── 01_transform.sql        ← skooride arvutus
+    └── requirements.txt
 ```
-
-## Kokkuvõte, puudused ja võimalikud edasiarendused
-
-**Kokkuvõte:**
-- [Loetle, mis on lõpule viidud, mis töötab hästi]
-
-**Puudused:**
-- [Loetle ausalt, mis jäi tegemata - see ei mõjuta hinnet negatiivselt, vaid aitab hinnata]
-
-**Mis edasi:**
-- [Mida tahaksid edasi teha, kui aega oleks rohkem]
-
-## Meeskond
-
-| Nimi | Roll |
-|------|------|
-| [Nimi 1] | [Roll] |
-| [Nimi 2] | [Roll] |
-| [Nimi 3] | [Roll] |
-| [Nimi 4] | [Roll — vabatahtlik] |

@@ -15,8 +15,188 @@
 INSERT INTO mart.dim_maakond (maakond_nimi)
 SELECT DISTINCT maakond
 FROM staging.raw_tu110
+ON CONFLICT (maakond_nimi) DO NOTHING;
+
+
+INSERT INTO mart.fact_oobimised (
+    maakond_id,
+    aasta,
+    majutuskohti_arv,
+    tubade_arv,
+    voodikohtade_arv,
+    majutatute_arv,
+    oobimiste_arv,
+    tubade_taitumus_pct,
+    voodikohtade_taitumus_pct,
+    oopaeva_keskmine_maksumus
+)
+SELECT
+    m.maakond_id,
+    r.aasta,
+    r.majutuskohti_arv,
+    r.tubade_arv,
+    r.voodikohtade_arv,
+    r.majutatute_arv,
+    r.oobimiste_arv,
+    r.tubade_taitumus_pct,
+    r.voodikohtade_taitumus_pct,
+    r.oopaeva_keskmine_maksumus
+FROM staging.raw_tu110 r
+JOIN mart.dim_maakond m
+    ON m.maakond_nimi = r.maakond
+ON CONFLICT (maakond_id, aasta) DO UPDATE SET
+    majutuskohti_arv = EXCLUDED.majutuskohti_arv,
+    tubade_arv = EXCLUDED.tubade_arv,
+    voodikohtade_arv = EXCLUDED.voodikohtade_arv,
+    majutatute_arv = EXCLUDED.majutatute_arv,
+    oobimiste_arv = EXCLUDED.oobimiste_arv,
+    tubade_taitumus_pct = EXCLUDED.tubade_taitumus_pct,
+    voodikohtade_taitumus_pct = EXCLUDED.voodikohtade_taitumus_pct,
+    oopaeva_keskmine_maksumus = EXCLUDED.oopaeva_keskmine_maksumus,
+    loaded_at = now();
+
+
+-- =========================
+-- 3. SCORE TABLE (1 aasta — CAGR lisatakse hiljem)
+-- =========================
+
+WITH latest AS (
+    SELECT MAX(aasta) AS latest_year
+    FROM mart.fact_oobimised
+),
+
+baas AS (
+    SELECT
+        f.maakond_id,
+        MAX(f.oobimiste_arv)                                           FILTER (WHERE f.aasta = latest.latest_year) AS turumaht_raw,
+        MAX(f.oobimiste_arv / NULLIF(f.voodikohtade_arv, 0))          FILTER (WHERE f.aasta = latest.latest_year) AS taitumus_raw,
+        MAX(f.oobimiste_arv * f.oopaeva_keskmine_maksumus)            FILTER (WHERE f.aasta = latest.latest_year) AS rahaline_potentsiaal_raw
+    FROM mart.fact_oobimised f
+    CROSS JOIN latest
+    GROUP BY f.maakond_id
+),
+
+minmax AS (
+    SELECT
+        MIN(turumaht_raw) AS turumaht_min, MAX(turumaht_raw) AS turumaht_max,
+        MIN(taitumus_raw) AS taitumus_min, MAX(taitumus_raw) AS taitumus_max,
+        MIN(rahaline_potentsiaal_raw) AS raha_min, MAX(rahaline_potentsiaal_raw) AS raha_max
+    FROM baas
+),
+
+norm AS (
+    SELECT
+        c.*,
+        CASE WHEN m.turumaht_max > m.turumaht_min
+            THEN (c.turumaht_raw - m.turumaht_min) / (m.turumaht_max - m.turumaht_min)
+            ELSE 0.5 END AS turumaht_norm,
+        CASE WHEN m.taitumus_max > m.taitumus_min
+            THEN (c.taitumus_raw - m.taitumus_min) / (m.taitumus_max - m.taitumus_min)
+            ELSE 0.5 END AS taitumus_norm,
+        CASE WHEN m.raha_max > m.raha_min
+            THEN (c.rahaline_potentsiaal_raw - m.raha_min) / (m.raha_max - m.raha_min)
+            ELSE 0.5 END AS rahaline_potentsiaal_norm
+    FROM baas c
+    CROSS JOIN minmax m
+),
+
+scored AS (
+    SELECT
+        *,
+        -- Kaalud: turumaht 40%, nõudlus/pakkumine 35%, rahaline potentsiaal 25%
+        -- CAGR kaal (arhitektuuris 35%) redistributeeritakse, kuni mitme-aastased andmed saadaval
+        ROUND(
+            (0.40 * turumaht_norm) +
+            (0.35 * taitumus_norm) +
+            (0.25 * rahaline_potentsiaal_norm)
+        , 4) AS loplik_skoor
+    FROM norm
+),
+
+hinnang AS (
+    SELECT
+        *,
+        CASE
+            WHEN loplik_skoor >= 0.65                           THEN 1  -- Atraktiivne: kõrge koondskoor
+            WHEN taitumus_norm >= 0.6 AND turumaht_norm < 0.4   THEN 2  -- Kasvav: kõrge nõudlus/pakkumine, väike maht
+            WHEN taitumus_norm < 0.35 AND turumaht_norm < 0.4   THEN 3  -- Küllastunud: madal täituvus ja maht
+            ELSE                                                 4  -- Stabiilne rahavoog
+        END AS hinnang_id
+    FROM scored
+)
+
+INSERT INTO mart.fact_skoor (
+    maakond_id,
+    turumaht_raw,
+    cagr_raw,
+    taitumus_raw,
+    rahaline_potentsiaal_raw,
+    turumaht_norm,
+    cagr_norm,
+    taitumus_norm,
+    rahaline_potentsiaal_norm,
+    loplik_skoor,
+    hinnang_id
+)
+SELECT
+    maakond_id,
+    turumaht_raw,
+    NULL AS cagr_raw,
+    taitumus_raw,
+    rahaline_potentsiaal_raw,
+    turumaht_norm,
+    NULL AS cagr_norm,
+    taitumus_norm,
+    rahaline_potentsiaal_norm,
+    loplik_skoor,
+    hinnang_id
+FROM hinnang
+ON CONFLICT (maakond_id) DO UPDATE SET
+    turumaht_raw              = EXCLUDED.turumaht_raw,
+    cagr_raw                  = NULL,
+    taitumus_raw              = EXCLUDED.taitumus_raw,
+    rahaline_potentsiaal_raw  = EXCLUDED.rahaline_potentsiaal_raw,
+    turumaht_norm             = EXCLUDED.turumaht_norm,
+    cagr_norm                 = NULL,
+    taitumus_norm             = EXCLUDED.taitumus_norm,
+    rahaline_potentsiaal_norm = EXCLUDED.rahaline_potentsiaal_norm,
+    loplik_skoor              = EXCLUDED.loplik_skoor,
+    hinnang_id                = EXCLUDED.hinnang_id,
+    calculated_at             = now();
+
+DROP VIEW IF EXISTS mart.v_piirkondade_edetabel;
+CREATE VIEW mart.v_piirkondade_edetabel AS
+SELECT
+    ROW_NUMBER() OVER (ORDER BY s.loplik_skoor DESC) AS koht,
+    m.maakond_nimi,
+    ROUND(s.loplik_skoor * 100, 1)    AS skoor_pct,
+    ROUND(s.turumaht_raw)             AS oobimiste_arv,
+    ROUND(s.taitumus_raw, 2)          AS noudlus_pakkumine_suhe,
+    ROUND(s.rahaline_potentsiaal_raw) AS rahaline_potentsiaal,
+    s.turumaht_norm,
+    s.taitumus_norm,
+    s.rahaline_potentsiaal_norm,
+    h.kategooria_nimi,
+    h.soovitus,
+    h.selgitus
+FROM mart.fact_skoor s
+JOIN mart.dim_maakond         m ON m.maakond_id = s.maakond_id
+JOIN mart.dim_ariline_hinnang h ON h.hinnang_id = s.hinnang_id
+ORDER BY s.loplik_skoor DESC;
+
+
+/* INSERT INTO mart.dim_maakond (maakond_nimi)
+SELECT DISTINCT maakond
+FROM staging.raw_tu110
 ORDER BY maakond
 ON CONFLICT (maakond_nimi) DO NOTHING;
+
+INSERT INTO mart.fact_oobimised (maakond, aasta, oobimiste_arv)
+SELECT
+    maakond,
+    aasta,
+    oobimiste_arv
+FROM staging.raw_tu110;
 
 INSERT INTO mart.fact_oobimised (
     maakond_id, aasta,
@@ -163,3 +343,4 @@ ON CONFLICT (maakond_id) DO UPDATE SET
     loplik_skoor              = EXCLUDED.loplik_skoor,              
     hinnang_id                = EXCLUDED.hinnang_id,                
     calculated_at             = now();                              
+ */

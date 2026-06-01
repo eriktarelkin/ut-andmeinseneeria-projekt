@@ -1,37 +1,32 @@
 # Edenemisraport
 
-> **Juhend:** See fail on projektitöö teise nädala väljund. Uuenda lühidalt iga esitamise eel. Kustuta see juhendrida.
-
 ## Mis on valmis
 
-- [ ] Docker Compose käivitab kõik teenused
-- [ ] Andmeid saadakse allikast kätte
-- [ ] Andmed laetakse `staging` kihti
-- [ ] Vähemalt üks transformatsioon toimib
-- [ ] Vähemalt üks näidikulaud on nähtaval
+- [x] Docker Compose käivitab kõik teenused
+- [x] Andmeid saadakse allikast kätte
+- [x] Andmed laetakse `staging` kihti
+- [x] Vähemalt üks transformatsioon toimib
+- [x] Vähemalt üks näidikulaud on nähtaval
 - [ ] Vähemalt üks andmekvaliteedi test läbib
 
-[Täpsusta lühidalt, mis täpselt valmis on]
+Andmevoog töötab otsast lõpuni: Statistikaameti TU110 API → `staging.raw_tu110` → `mart.fact_skoor` → Streamlit näidikulaud. Pipeline käivitub automaatselt konteinerite käivitamisel.
 
 ## Järgmised sammud
 
-- [Esimene tegevus, mis ees ootab]
-- [Teine tegevus]
-- [Kolmas tegevus]
+- Lisada CAGR mõõdik, kui mitme-aastased andmed on kontrollitud
+- Kirjutada andmekvaliteedi testid (`02_quality_tests.sql`)
+- Täiendada README juhendiga uue kasutaja jaoks
 
 ## Mis takistab
 
-- [Probleem 1 — näiteks: API tagastab vigaseid väärtusi ühes linnas]
-- [Probleem 2 — või: "Praegu pole blokeerivaid probleeme"]
+Praegu pole blokeerivaid probleeme.
 
 ## Kontrollpunkt
 
-Käsk, millega saab kontrollida, et töövoog töötab:
-
 ```bash
-# [Lisa siia käsk, mis näitab, et andmed liiguvad allikast näidikulauani]
-# Näiteks:
+docker compose up -d --build
+# Oota ~30 sekundit, seejärel:
 docker compose exec pipeline python scripts/run_pipeline.py check
 ```
 
-Oodatav tulemus: [Kirjelda, mida töötav süsteem väljastab]
+Oodatav tulemus: tabelis "Top 5 piirkonda" on maakonnad skooriga vahemikus 0–100 ja soovitusega (nt `INVESTEERI KOHE`). Näidikulaud on nähtav aadressil `http://localhost:8501`.

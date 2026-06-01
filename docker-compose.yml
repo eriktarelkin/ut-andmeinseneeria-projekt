@@ -16,15 +16,19 @@ services:
     container_name: majutusasutuste-db
     env_file:
       - .env
+
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
     ports:
       - "${DB_PORT_HOST:-55432}:5432"
+
     volumes:
       - ./init:/docker-entrypoint-initdb.d   # SQL-skriptid, mis käivituvad esimesel korral
       - pgdata:/var/lib/postgresql
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-praktikum}"]
       interval: 10s
@@ -60,25 +64,30 @@ services:
   # --- Näidikulaud ---
 
   dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.app
+    build: ./dashboard
+
     container_name: majutusasutuste-dashboard
+
     env_file:
       - .env
+
     environment:
       DB_HOST: db
-      DB_PORT: "5432"
+      DB_PORT: 5432
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
       DASHBOARD_AUTOREFRESH_SECONDS: ${DASHBOARD_AUTOREFRESH_SECONDS:-15}
+
     depends_on:
       db:
         condition: service_healthy
+
     volumes:
       - ./dashboard:/app/dashboard
+
     working_dir: /app
+
     command:
       [
         "streamlit",
@@ -88,9 +97,9 @@ services:
         "--server.port=8501",
         "--server.headless=true"
       ]
+
     ports:
       - "${DASHBOARD_PORT_HOST:-8501}:8501"
-
 
 volumes:
   pgdata:

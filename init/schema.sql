@@ -95,11 +95,13 @@ CREATE OR REPLACE VIEW mart.v_piirkondade_edetabel AS
 SELECT
     ROW_NUMBER() OVER (ORDER BY s.loplik_skoor DESC) AS koht,
     m.maakond_nimi,
-    ROUND(s.loplik_skoor * 100, 1)                   AS skoor_pct,
-    ROUND(s.cagr_raw * 100, 2)                       AS kasv_cagr_pct,
-    ROUND(s.taitumus_raw * 100, 1)                   AS taitumus_pct,
-    ROUND(s.turumaht_raw)                            AS keskmine_oobimised,
-    ROUND(s.rahaline_potentsiaal_raw, 2)             AS rahaline_potentsiaal,
+    ROUND(s.loplik_skoor * 100, 1)    AS skoor_pct,
+    ROUND(s.turumaht_raw)             AS oobimiste_arv,
+    ROUND(s.taitumus_raw, 2)          AS noudlus_pakkumine_suhe,
+    ROUND(s.rahaline_potentsiaal_raw) AS rahaline_potentsiaal,
+    s.turumaht_norm,
+    s.taitumus_norm,
+    s.rahaline_potentsiaal_norm,
     h.kategooria_nimi,
     h.soovitus,
     h.selgitus

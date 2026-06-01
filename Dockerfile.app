@@ -9,4 +9,7 @@ WORKDIR /app
 COPY scripts/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-CMD ["sleep", "infinity"]
+COPY scripts/run_pipeline.sh /app/run_pipeline.sh
+RUN chmod +x /app/run_pipeline.sh
+
+CMD ["/app/run_pipeline.sh"]
