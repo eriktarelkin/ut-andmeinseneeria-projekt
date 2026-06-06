@@ -19,11 +19,13 @@ from psycopg2.extras import execute_values
 import requests
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-SEED_SQL      = SCRIPT_DIR / "00_seed.sql"
+SCRIPT_DIR   = Path(__file__).resolve().parent
+SEED_SQL     = SCRIPT_DIR / "00_seed.sql"
 TRANSFORM_SQL = SCRIPT_DIR / "01_transform.sql"
+QUALITY_SQL  = SCRIPT_DIR / "02_quality.sql"
 
-TU110_BASE_URL = "https://andmed.stat.ee/api/v1/et/stat/TU110"
+TU110_BASE_URL    = "https://andmed.stat.ee/api/v1/et/stat/TU110"
+INGEST_START_YEAR = 2004
 
 CODE_TO_COLUMN = {
     "CAP_ESTA":    "majutuskohti_arv",
@@ -94,16 +96,30 @@ def update_pipeline_run(conn, *, run_id: uuid.UUID, status: str, message: str | 
     conn.commit()
 
 
-def fetch_tu110_json(api_url: str) -> dict:
+def fetch_available_years(api_url: str) -> list[int]:
+    try:
+        resp = requests.get(api_url, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        for var in data.get("variables", []):
+            if var.get("code") == "Vaatlusperiood":
+                return sorted(int(v) for v in var.get("values", []))
+        return []
+    except requests.RequestException as exc:
+        raise UserFacingError(f"TU110 metaandmete päring ebaõnnestus: {exc}") from exc
+
+
+def fetch_tu110_json(api_url: str, year: int) -> dict:
     payload = {
         "query": [
             {
                 "code": "Näitaja",
-                "selection": {
-                    "filter": "item",
-                    "values": list(CODE_TO_COLUMN.keys()),
-                },
-            }
+                "selection": {"filter": "item", "values": list(CODE_TO_COLUMN.keys())},
+            },
+            {
+                "code": "Vaatlusperiood",
+                "selection": {"filter": "item", "values": [str(year)]},
+            },
         ],
         "response": {"format": "json-stat2"},
     }
@@ -113,6 +129,27 @@ def fetch_tu110_json(api_url: str) -> dict:
         return resp.json()
     except requests.RequestException as exc:
         raise UserFacingError(f"TU110 päring ebaõnnestus: {exc}") from exc
+
+
+def get_and_advance_cursor(conn, available_years: list[int]) -> int:
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO staging.ingest_cursor (id, next_year)
+            VALUES (1, %s)
+            ON CONFLICT (id) DO UPDATE SET next_year = staging.ingest_cursor.next_year
+            RETURNING next_year
+        """, (INGEST_START_YEAR,))
+        current_year = cur.fetchone()[0]
+
+        future = [y for y in available_years if y > current_year]
+        next_year = min(future) if future else min(available_years)
+
+        cur.execute(
+            "UPDATE staging.ingest_cursor SET next_year = %s, updated_at = now() WHERE id = 1",
+            (next_year,),
+        )
+    conn.commit()
+    return current_year
 
 
 def build_raw_rows(payload: dict) -> list[dict]:
@@ -144,10 +181,27 @@ def build_raw_rows(payload: dict) -> list[dict]:
     return rows
 
 
-def to_wide_rows(rows: list[dict]) -> list[dict]:
-    # Exclude country-level aggregate — we only want county/city level data
-    EXCLUDE_REGIONS = {"Eesti"}
 
+# Eesti koondandmed ja 4 terviklikku maakonda, millel on linnasplit, jäetakse välja.
+# Nende maakondade jaoks kasutatakse "v.a linn" ridu.
+EXCLUDE_REGIONS = {
+    "Eesti",
+    "Harju maakond",
+    "Ida-Viru maakond",
+    "Pärnu maakond",
+    "Tartu maakond",
+}
+
+
+def normalize_region_name(name: str) -> str:
+    if ", v.a " in name:
+        return name.split(", v.a ")[0]
+    if name.endswith(" asustusüksusena"):
+        return name[: -len(" asustusüksusena")]
+    return name
+
+
+def to_wide_rows(rows: list[dict]) -> list[dict]:
     wide: dict[tuple, dict] = {}
     for r in rows:
         if r["region"] in EXCLUDE_REGIONS:
@@ -155,9 +209,10 @@ def to_wide_rows(rows: list[dict]) -> list[dict]:
         col = CODE_TO_COLUMN.get(r["indicator"])
         if not col:
             continue
-        key = (r["region"], r["year"])
+        region = normalize_region_name(r["region"])
+        key = (region, r["year"])
         if key not in wide:
-            wide[key] = {"maakond": r["region"], "aasta": r["year"]}
+            wide[key] = {"maakond": region, "aasta": r["year"]}
         wide[key][col] = r["value"]
     return list(wide.values())
 
@@ -208,22 +263,27 @@ def ingest() -> uuid.UUID:
 
     conn = get_connection()
     try:
+        available_years = fetch_available_years(api_url)
+        if not available_years:
+            raise UserFacingError("TU110 metaandmetest ei leitud ühtegi aastat.")
+
+        year = get_and_advance_cursor(conn, available_years)
+
         insert_pipeline_run(conn, run_id=run_id, fetched_at=fetched_at,
-                            status="running", message="Laadimine algas.")
-        log(f"Pärin TU110 andmeid: {api_url}.")
-        payload = fetch_tu110_json(api_url)
+                            status="running", message=f"Laadin aasta {year}.")
+        log(f"Pärin TU110 andmeid aasta {year} kohta ({api_url}).")
+        payload = fetch_tu110_json(api_url, year)
         rows    = build_raw_rows(payload)
 
         if not rows:
             raise UserFacingError(
-                "TU110 vastusest ei saadud ühtegi rida. "
-                "API võib tagastada metaandmeid ilma vaatlusväärtusteta."
+                f"TU110 vastusest ei saadud ühtegi rida (aasta {year})."
             )
 
         total = load_raw_rows(conn, run_id, to_wide_rows(rows))
         update_pipeline_run(conn, run_id=run_id, status="success",
-                            message=f"Laadisin {total} rida tabelisse staging.raw_tu110.")
-        log(f"Andmete vastuvõtt valmis. Käivituse ID: {run_id}.")
+                            message=f"Laadisin {total} rida (aasta {year}) tabelisse staging.raw_tu110.")
+        log(f"Andmete vastuvõtt valmis (aasta {year}). Käivituse ID: {run_id}.")
         return run_id
     except Exception as exc:
         conn.rollback()
@@ -299,9 +359,36 @@ def reset_data() -> None:
         conn.close()
 
 
+def quality_check() -> None:
+    conn = get_connection()
+    try:
+        execute_sql_file(conn, QUALITY_SQL)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT test_name, status, failed_rows, message "
+                "FROM quality.test_results ORDER BY test_name"
+            )
+            results = cur.fetchall()
+
+        failures = [(name, rows, msg) for name, status, rows, msg in results if status == "failed"]
+        passed   = len(results) - len(failures)
+
+        log(f"Kvaliteedikontroll: {passed}/{len(results)} testi läbitud.")
+        for name, rows, msg in failures:
+            log(f"  FAIL [{name}] ({rows} rida): {msg}")
+
+        if failures:
+            raise UserFacingError(
+                f"Kvaliteedikontroll ebaõnnestus: {len(failures)}/{len(results)} testi."
+            )
+    finally:
+        conn.close()
+
+
 def run_all() -> None:
     ingest()
     transform()
+    quality_check()
     log("Kogu töövoog õnnestus.")
 
 
@@ -309,7 +396,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Majutusasutuste andmetöövoog.")
     parser.add_argument(
         "command",
-        choices=["ingest", "transform", "check", "reset", "run-all"],
+        choices=["ingest", "transform", "check", "reset", "run-all", "quality-check"],
         help="Töövoo samm, mida käivitada.",
     )
     return parser.parse_args()
@@ -328,6 +415,8 @@ def main() -> int:
             reset_data()
         elif args.command == "run-all":
             run_all()
+        elif args.command == "quality-check":
+            quality_check()
         return 0
     except UserFacingError as exc:
         print(f"Viga: {exc}", file=sys.stderr)

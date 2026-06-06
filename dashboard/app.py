@@ -41,23 +41,31 @@ def main():
     st.caption("Millises Eesti piirkonnas on suurim potentsiaal avada uus majutusasutus?")
 
     leaderboard = load_dataframe("SELECT * FROM mart.v_piirkondade_edetabel")
-    year_df     = load_dataframe("SELECT MAX(aasta) AS aasta FROM mart.fact_oobimised")
-    data_year   = int(year_df["aasta"].iloc[0]) if not year_df.empty and year_df["aasta"].iloc[0] else None
+    years_df    = load_dataframe("SELECT MIN(aasta) AS min_aasta, MAX(aasta) AS max_aasta FROM mart.fact_oobimised")
+    quality_df  = load_dataframe("SELECT status, COUNT(*) AS n FROM quality.test_results GROUP BY status")
 
     if leaderboard.empty:
-        st.warning("Andmed puuduvad — käivita ingest ja 01_transform.sql.")
+        st.warning("Andmed puuduvad — käivita pipeline.")
         return
 
-    # Maakonna filter
-    maakonnad = ["Kõik"] + sorted(leaderboard["maakond_nimi"].dropna().unique().tolist())
-    valitud = st.sidebar.selectbox("Vali maakond", maakonnad)
+    min_aasta = int(years_df["min_aasta"].iloc[0]) if not years_df.empty and years_df["min_aasta"].iloc[0] else None
+    max_aasta = int(years_df["max_aasta"].iloc[0]) if not years_df.empty and years_df["max_aasta"].iloc[0] else None
+    aasta_vahemik = f"{min_aasta}–{max_aasta}" if min_aasta and max_aasta else "–"
+
+    passed = int(quality_df.loc[quality_df["status"] == "passed", "n"].sum()) if not quality_df.empty else 0
+    failed = int(quality_df.loc[quality_df["status"] == "failed", "n"].sum()) if not quality_df.empty else 0
+    total  = passed + failed
+
+    # Piirkonna filter
+    piirkonnad = ["Kõik"] + sorted(leaderboard["maakond_nimi"].dropna().unique().tolist())
+    valitud = st.sidebar.selectbox("Vali piirkond", piirkonnad)
     valitud = None if valitud == "Kõik" else valitud
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("**Kaalud (1 aasta)**")
-    st.sidebar.markdown("- Turumaht: 40%")
-    st.sidebar.markdown("- Nõudlus/pakkumine: 35%")
-    st.sidebar.markdown("- Rahaline potentsiaal: 25%")
+    if failed > 0:
+        st.sidebar.error(f"Kvaliteet: {failed}/{total} testi ebaõnnestus")
+    elif total > 0:
+        st.sidebar.success(f"Kvaliteet: {passed}/{total} testi OK")
 
     # Parim piirkond
     top = leaderboard.iloc[0]
@@ -73,11 +81,11 @@ def main():
     c1.metric("Piirkondi kokku", len(leaderboard))
     c2.metric("Parim piirkond", top["maakond_nimi"])
     c3.metric("Kõrgeim skoor", f"{top['skoor_pct']}%")
-    c4.metric("Andmete aasta", str(data_year) if data_year else "–")
+    c4.metric("Andmete aastad", aasta_vahemik)
 
     st.markdown("---")
 
-    st.subheader("Maakondade skoorid")
+    st.subheader("Piirkondade skoorid")
     leaderboard["label"] = leaderboard["koht"].astype(str) + ". " + leaderboard["maakond_nimi"]
     bars = (
         alt.Chart(leaderboard)

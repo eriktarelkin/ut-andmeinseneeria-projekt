@@ -65,11 +65,23 @@ WITH latest AS (
     FROM mart.fact_oobimised
 ),
 
+-- Kaalud loetakse mart.fact_skoor tabelist; uutel ridadel kasutatakse vaikeväärtusi.
+-- w2_kasv (CAGR) jäetakse siia vahele — CAGR pole veel saadaval.
+kaalud AS (
+    SELECT
+        m.maakond_id,
+        COALESCE(fs.w1_turumaht, 0.40) AS w1_turumaht,
+        COALESCE(fs.w3_taitumus, 0.35) AS w3_taitumus,
+        COALESCE(fs.w4_rahaline, 0.25) AS w4_rahaline
+    FROM mart.dim_maakond m
+    LEFT JOIN mart.fact_skoor fs ON fs.maakond_id = m.maakond_id
+),
+
 baas AS (
     SELECT
         f.maakond_id,
         MAX(f.oobimiste_arv)                                           FILTER (WHERE f.aasta = latest.latest_year) AS turumaht_raw,
-        MAX(f.oobimiste_arv / NULLIF(f.voodikohtade_arv, 0))          FILTER (WHERE f.aasta = latest.latest_year) AS taitumus_raw,
+        MAX(f.taitumus_proxy)                                          FILTER (WHERE f.aasta = latest.latest_year) AS taitumus_raw,
         MAX(f.oobimiste_arv * f.oopaeva_keskmine_maksumus)            FILTER (WHERE f.aasta = latest.latest_year) AS rahaline_potentsiaal_raw
     FROM mart.fact_oobimised f
     CROSS JOIN latest
@@ -87,6 +99,9 @@ minmax AS (
 norm AS (
     SELECT
         c.*,
+        k.w1_turumaht,
+        k.w3_taitumus,
+        k.w4_rahaline,
         CASE WHEN m.turumaht_max > m.turumaht_min
             THEN (c.turumaht_raw - m.turumaht_min) / (m.turumaht_max - m.turumaht_min)
             ELSE 0.5 END AS turumaht_norm,
@@ -98,17 +113,16 @@ norm AS (
             ELSE 0.5 END AS rahaline_potentsiaal_norm
     FROM baas c
     CROSS JOIN minmax m
+    JOIN kaalud k ON k.maakond_id = c.maakond_id
 ),
 
 scored AS (
     SELECT
         *,
-        -- Kaalud: turumaht 40%, nõudlus/pakkumine 35%, rahaline potentsiaal 25%
-        -- CAGR kaal (arhitektuuris 35%) redistributeeritakse, kuni mitme-aastased andmed saadaval
         ROUND(
-            (0.40 * turumaht_norm) +
-            (0.35 * taitumus_norm) +
-            (0.25 * rahaline_potentsiaal_norm)
+            (w1_turumaht * turumaht_norm) +
+            (w3_taitumus * taitumus_norm) +
+            (w4_rahaline * rahaline_potentsiaal_norm)
         , 4) AS loplik_skoor
     FROM norm
 ),
@@ -136,7 +150,10 @@ INSERT INTO mart.fact_skoor (
     taitumus_norm,
     rahaline_potentsiaal_norm,
     loplik_skoor,
-    hinnang_id
+    hinnang_id,
+    w1_turumaht,
+    w3_taitumus,
+    w4_rahaline
 )
 SELECT
     maakond_id,
@@ -149,7 +166,10 @@ SELECT
     taitumus_norm,
     rahaline_potentsiaal_norm,
     loplik_skoor,
-    hinnang_id
+    hinnang_id,
+    w1_turumaht,
+    w3_taitumus,
+    w4_rahaline
 FROM hinnang
 ON CONFLICT (maakond_id) DO UPDATE SET
     turumaht_raw              = EXCLUDED.turumaht_raw,
@@ -163,6 +183,7 @@ ON CONFLICT (maakond_id) DO UPDATE SET
     loplik_skoor              = EXCLUDED.loplik_skoor,
     hinnang_id                = EXCLUDED.hinnang_id,
     calculated_at             = now();
+    -- w1_turumaht, w3_taitumus, w4_rahaline ei uuendata — DB-s seatud väärtused säilivad
 
 DROP VIEW IF EXISTS mart.v_piirkondade_edetabel;
 CREATE VIEW mart.v_piirkondade_edetabel AS

@@ -1,5 +1,22 @@
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS mart;
+CREATE SCHEMA IF NOT EXISTS quality;
+
+CREATE TABLE IF NOT EXISTS quality.test_results (
+    id          serial PRIMARY KEY,
+    test_name   text        NOT NULL,
+    status      text        NOT NULL CHECK (status IN ('passed', 'failed')),
+    failed_rows integer     NOT NULL,
+    message     text        NOT NULL,
+    run_at      timestamptz NOT NULL DEFAULT now()
+);
+
+-- Üks rida — järgmine aasta, mida pärida (tsükliline kursor)
+CREATE TABLE IF NOT EXISTS staging.ingest_cursor (
+    id         int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    next_year  int NOT NULL,
+    updated_at timestamptz DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS staging.pipeline_runs (
     run_id      uuid PRIMARY KEY,
@@ -82,33 +99,14 @@ CREATE TABLE IF NOT EXISTS mart.fact_skoor (
     cagr_norm                 numeric,
     taitumus_norm             numeric,
     rahaline_potentsiaal_norm numeric,
-    w1_turumaht               numeric NOT NULL DEFAULT 0.25,
+    w1_turumaht               numeric NOT NULL DEFAULT 0.40,
     w2_kasv                   numeric NOT NULL DEFAULT 0.35,
-    w3_taitumus               numeric NOT NULL DEFAULT 0.25,
-    w4_rahaline               numeric NOT NULL DEFAULT 0.15,
+    w3_taitumus               numeric NOT NULL DEFAULT 0.35,
+    w4_rahaline               numeric NOT NULL DEFAULT 0.25,
     loplik_skoor              numeric,
     hinnang_id                integer REFERENCES mart.dim_ariline_hinnang (hinnang_id),
     calculated_at             timestamp DEFAULT now()
 );
-
-CREATE OR REPLACE VIEW mart.v_piirkondade_edetabel AS
-SELECT
-    ROW_NUMBER() OVER (ORDER BY s.loplik_skoor DESC) AS koht,
-    m.maakond_nimi,
-    ROUND(s.loplik_skoor * 100, 1)    AS skoor_pct,
-    ROUND(s.turumaht_raw)             AS oobimiste_arv,
-    ROUND(s.taitumus_raw, 2)          AS noudlus_pakkumine_suhe,
-    ROUND(s.rahaline_potentsiaal_raw) AS rahaline_potentsiaal,
-    s.turumaht_norm,
-    s.taitumus_norm,
-    s.rahaline_potentsiaal_norm,
-    h.kategooria_nimi,
-    h.soovitus,
-    h.selgitus
-FROM mart.fact_skoor s
-JOIN mart.dim_maakond         m ON m.maakond_id = s.maakond_id
-JOIN mart.dim_ariline_hinnang h ON h.hinnang_id = s.hinnang_id
-ORDER BY s.loplik_skoor DESC;
 
 CREATE OR REPLACE VIEW mart.v_oobimised_aegrea AS
 SELECT

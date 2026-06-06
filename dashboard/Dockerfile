@@ -7,7 +7,8 @@ RUN pip install --no-cache-dir \
     pandas \
     altair \
     psycopg2-binary \
-    requests
+    requests \
+    streamlit-autorefresh
 
 COPY . /app
 
