@@ -132,11 +132,6 @@ def fetch_tu110_json(api_url: str, year: int) -> dict:
 
 
 def get_and_advance_cursor(conn, available_years: list[int]) -> list[int]:
-    """Tagastab laadimiseks mõeldud aastate nimekirja.
-    
-    Esimesel käivitusel tagastab 4 aastat (et CAGR oleks kohe arvutatav).
-    Edasi tagastab 1 aasta kaupa.
-    """
     with conn.cursor() as cur:
         cur.execute("""
             INSERT INTO staging.ingest_cursor (id, next_year)

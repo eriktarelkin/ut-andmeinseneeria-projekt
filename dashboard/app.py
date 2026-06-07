@@ -12,7 +12,7 @@ except ImportError:
 
 st.set_page_config(page_title="Majutusasutuste analüüs", layout="wide")
 
-auto_refresh_seconds = int(os.environ.get("DASHBOARD_AUTOREFRESH_SECONDS", 60))
+auto_refresh_seconds = int(os.environ.get("DASHBOARD_AUTOREFRESH_SECONDS", 5))
 
 if st.sidebar.button("Värskenda vaade"):
     st.rerun()
