@@ -146,7 +146,6 @@ def get_and_advance_cursor(conn, available_years: list[int]) -> list[int]:
         """, (INGEST_START_YEAR,))
         current_year = cur.fetchone()[0]
 
-        # Esimene käivitus laeb 4 aastat korraga, et saada ajalooline taust CAGRi arvutamiseks
         already_loaded = current_year > INGEST_START_YEAR
         if not already_loaded:
             years_to_load = [y for y in available_years if y >= INGEST_START_YEAR][:4]
