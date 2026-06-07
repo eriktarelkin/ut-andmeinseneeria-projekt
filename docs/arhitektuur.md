@@ -58,7 +58,9 @@ Tulemus =
     W2 * Nõudluse kasv (CAGR) +
     W3 * Nõudlus +
     W4 * Rahaline potentsiaal
-    
+
+Kaalud: W1 = 0.30, W2 = 0.35, W3 = 0.20, W4 = 0.15. Kõik mõõdikud normaliseeritakse vahemikku 0–1 (min-max) enne kaalumist. Kaalud on salvestatud `mart.fact_skoor` tabelis ja neid saab piirkonna kaupa käsitsi muuta.
+
 ---
 
 ## Tabelid:
@@ -129,8 +131,9 @@ flowchart LR
 
 | Kiht | Roll |
 |------|------|
-| `staging` | Hoiab allika andmeid töötlemata kujul. |
+| `staging` | Hoiab allika andmeid töötlemata kujul. Sisaldab `pipeline_runs` (käivituste auditijälg) ja `ingest_cursor` (inkrementaalse laadimise kursor). |
 | `mart` | Hoiab transformeeritud ja äriloogikat sisaldavaid tabeleid. |
+| `quality` | Hoiab 12 automaattesti tulemusi iga pipeline käivituse kohta (`test_results`). |
 
 ---
 
