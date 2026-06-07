@@ -360,6 +360,7 @@ def reset_data() -> None:
                     mart.dim_maakond,
                     staging.raw_tu110,
                     staging.pipeline_runs
+                    staging.ingest_cursor
                 CASCADE
                 """
             )
