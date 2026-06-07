@@ -94,7 +94,7 @@ test_cases AS (
         COUNT(*)::integer AS failed_rows,
         'Kaalud peavad summeeruma 1.0-ks (±0.01).' AS message
     FROM mart.fact_skoor AS s
-    WHERE ABS(s.w1_turumaht + s.w3_taitumus + s.w4_rahaline - 1.0) > 0.01
+    WHERE ABS(s.w1_turumaht + s.w2_kasv + s.w3_taitumus + s.w4_rahaline - 1.0) > 0.01
 
     UNION ALL
 

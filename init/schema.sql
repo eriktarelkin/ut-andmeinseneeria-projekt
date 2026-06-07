@@ -76,10 +76,10 @@ CREATE TABLE IF NOT EXISTS mart.fact_oobimised (
     voodikohtade_taitumus_pct numeric,
     oopaeva_keskmine_maksumus numeric,
     taitumus_proxy            numeric GENERATED ALWAYS AS (
-        CASE WHEN tubade_arv > 0
-            THEN oobimiste_arv / (tubade_arv * 365)
-            ELSE NULL
-        END
+    CASE WHEN voodikohtade_arv > 0
+        THEN oobimiste_arv / (voodikohtade_arv * 365)
+        ELSE NULL
+    END
     ) STORED,
     loaded_at                 timestamp DEFAULT now()
 );

@@ -25,7 +25,7 @@ TRANSFORM_SQL = SCRIPT_DIR / "01_transform.sql"
 QUALITY_SQL  = SCRIPT_DIR / "02_quality.sql"
 
 TU110_BASE_URL    = "https://andmed.stat.ee/api/v1/et/stat/TU110"
-INGEST_START_YEAR = 2004
+INGEST_START_YEAR = 2009
 
 CODE_TO_COLUMN = {
     "CAP_ESTA":    "majutuskohti_arv",
@@ -131,7 +131,12 @@ def fetch_tu110_json(api_url: str, year: int) -> dict:
         raise UserFacingError(f"TU110 päring ebaõnnestus: {exc}") from exc
 
 
-def get_and_advance_cursor(conn, available_years: list[int]) -> int:
+def get_and_advance_cursor(conn, available_years: list[int]) -> list[int]:
+    """Tagastab laadimiseks mõeldud aastate nimekirja.
+    
+    Esimesel käivitusel tagastab 4 aastat (et CAGR oleks kohe arvutatav).
+    Edasi tagastab 1 aasta kaupa.
+    """
     with conn.cursor() as cur:
         cur.execute("""
             INSERT INTO staging.ingest_cursor (id, next_year)
@@ -141,7 +146,14 @@ def get_and_advance_cursor(conn, available_years: list[int]) -> int:
         """, (INGEST_START_YEAR,))
         current_year = cur.fetchone()[0]
 
-        future = [y for y in available_years if y > current_year]
+        # Esimene käivitus laeb 4 aastat korraga, et saada ajalooline taust CAGRi arvutamiseks
+        already_loaded = current_year > INGEST_START_YEAR
+        if not already_loaded:
+            years_to_load = [y for y in available_years if y >= INGEST_START_YEAR][:4]
+        else:
+            years_to_load = [current_year]
+
+        future = [y for y in available_years if y > max(years_to_load)]
         next_year = min(future) if future else min(available_years)
 
         cur.execute(
@@ -149,8 +161,7 @@ def get_and_advance_cursor(conn, available_years: list[int]) -> int:
             (next_year,),
         )
     conn.commit()
-    return current_year
-
+    return years_to_load
 
 def build_raw_rows(payload: dict) -> list[dict]:
     if not isinstance(payload, dict):
@@ -266,24 +277,23 @@ def ingest() -> uuid.UUID:
         available_years = fetch_available_years(api_url)
         if not available_years:
             raise UserFacingError("TU110 metaandmetest ei leitud ühtegi aastat.")
-
-        year = get_and_advance_cursor(conn, available_years)
+        
+        years = get_and_advance_cursor(conn, available_years)
 
         insert_pipeline_run(conn, run_id=run_id, fetched_at=fetched_at,
-                            status="running", message=f"Laadin aasta {year}.")
-        log(f"Pärin TU110 andmeid aasta {year} kohta ({api_url}).")
-        payload = fetch_tu110_json(api_url, year)
-        rows    = build_raw_rows(payload)
-
-        if not rows:
-            raise UserFacingError(
-                f"TU110 vastusest ei saadud ühtegi rida (aasta {year})."
-            )
-
-        total = load_raw_rows(conn, run_id, to_wide_rows(rows))
+                    status="running", message=f"Laadin aastad {years}.")
+        total = 0
+        for year in years:
+            log(f"Pärin TU110 andmeid aasta {year} kohta ({api_url}).")
+            payload = fetch_tu110_json(api_url, year)
+            rows    = build_raw_rows(payload)
+            if not rows:
+                raise UserFacingError(f"TU110 vastusest ei saadud ühtegi rida (aasta {year}).")
+            total += load_raw_rows(conn, run_id, to_wide_rows(rows))
+        
         update_pipeline_run(conn, run_id=run_id, status="success",
-                            message=f"Laadisin {total} rida (aasta {year}) tabelisse staging.raw_tu110.")
-        log(f"Andmete vastuvõtt valmis (aasta {year}). Käivituse ID: {run_id}.")
+                    message=f"Laadisin {total} rida (aastad {years}) tabelisse staging.raw_tu110.")
+        log(f"Andmete vastuvõtt valmis (aastad {years}). Käivituse ID: {run_id}.")
         return run_id
     except Exception as exc:
         conn.rollback()
