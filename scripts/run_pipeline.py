@@ -206,7 +206,8 @@ EXCLUDE_REGIONS = {
 
 def normalize_region_name(name: str) -> str:
     if ", v.a " in name:
-        return name.split(", v.a ")[0]
+        maakond, linn = name.split(", v.a ")
+        return f"{maakond} (v.a {linn})"  # "Harju maakond (v.a Tallinn)"
     if name.endswith(" asustusüksusena"):
         return name[: -len(" asustusüksusena")]
     return name

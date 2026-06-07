@@ -60,6 +60,8 @@ def main():
     piirkonnad = ["Kõik"] + sorted(leaderboard["maakond_nimi"].dropna().unique().tolist())
     valitud = st.sidebar.selectbox("Vali piirkond", piirkonnad)
     valitud = None if valitud == "Kõik" else valitud
+    if valitud:
+        leaderboard = leaderboard[leaderboard["maakond_nimi"] == valitud]
 
     st.sidebar.markdown("---")
     if failed > 0:
@@ -94,7 +96,7 @@ def main():
             x=alt.X("skoor_pct:Q", title="Koondskoor (%)", scale=alt.Scale(domain=[0, 100])),
             y=alt.Y("label:N", sort="-x", title=None,
                     scale=alt.Scale(paddingInner=0.4)),
-            color=alt.Color("kategooria_nimi:N", legend=None),
+            color=alt.Color("kategooria_nimi:N", legend=alt.Legend(title="Kategooria")),
             tooltip=["maakond_nimi:N", "skoor_pct:Q", "soovitus:N"],
         )
         .properties(height=600)
@@ -107,7 +109,19 @@ def main():
     veerud = [c for c in ["koht", "maakond_nimi", "skoor_pct", "oobimiste_arv",
                            "noudlus_pakkumine_suhe", "rahaline_potentsiaal",
                            "kategooria_nimi", "soovitus"] if c in leaderboard.columns]
-    st.dataframe(leaderboard[veerud], use_container_width=True, hide_index=True)
+    st.dataframe(
+        leaderboard[veerud].rename(columns={
+            "maakond_nimi":          "Piirkond",
+            "skoor_pct":             "Koondskoor (%)",
+            "oobimiste_arv":         "Ööbimisi aastas",
+            "noudlus_pakkumine_suhe": "Täituvus",
+            "rahaline_potentsiaal":  "Hinnanguline käive (€)",
+            "kategooria_nimi":       "Kategooria",
+            "soovitus":              "Soovitus",
+        }),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 
 if __name__ == "__main__":

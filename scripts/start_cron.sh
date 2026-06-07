@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CRON_EXPR="${PIPELINE_CRON:-*/5 * * * *}"
+CRON_EXPR="${PIPELINE_CRON:-*/1 * * * *}"
 RUN_ON_STARTUP="${RUN_ON_STARTUP:-true}"
 ENV_FILE="/tmp/pipeline_env.sh"
 CRON_FILE="/etc/cron.d/majutus-pipeline"
