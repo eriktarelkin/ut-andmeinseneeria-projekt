@@ -25,7 +25,7 @@ TRANSFORM_SQL = SCRIPT_DIR / "01_transform.sql"
 QUALITY_SQL  = SCRIPT_DIR / "02_quality.sql"
 
 TU110_BASE_URL    = "https://andmed.stat.ee/api/v1/et/stat/TU110"
-INGEST_START_YEAR = 2009
+INGEST_START_YEAR = 2014
 
 CODE_TO_COLUMN = {
     "CAP_ESTA":    "majutuskohti_arv",

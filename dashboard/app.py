@@ -10,10 +10,9 @@ try:
 except ImportError:
     st_autorefresh = None
 
-
 st.set_page_config(page_title="Majutusasutuste analüüs", layout="wide")
 
-auto_refresh_seconds = int(os.environ.get("DASHBOARD_AUTOREFRESH_SECONDS", 30))
+auto_refresh_seconds = int(os.environ.get("DASHBOARD_AUTOREFRESH_SECONDS", 5))
 if auto_refresh_seconds > 0 and st_autorefresh is not None:
     st_autorefresh(interval=auto_refresh_seconds * 1000, key="dashboard_autorefresh")
 
