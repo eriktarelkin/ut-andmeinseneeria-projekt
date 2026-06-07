@@ -10,6 +10,6 @@ COPY scripts/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 COPY scripts/start_cron.sh /app/start_cron.sh
-RUN chmod +x /app/start_cron.sh
+RUN sed -i 's/\r//' /app/start_cron.sh && chmod +x /app/start_cron.sh
 
 CMD ["/app/start_cron.sh"]

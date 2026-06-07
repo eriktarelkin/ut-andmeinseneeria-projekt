@@ -1,5 +1,5 @@
 import os
-
+import time
 import altair as alt
 import pandas as pd
 import psycopg2
@@ -13,8 +13,6 @@ except ImportError:
 st.set_page_config(page_title="Majutusasutuste analüüs", layout="wide")
 
 auto_refresh_seconds = int(os.environ.get("DASHBOARD_AUTOREFRESH_SECONDS", 5))
-if auto_refresh_seconds > 0 and st_autorefresh is not None:
-    st_autorefresh(interval=auto_refresh_seconds * 1000, key="dashboard_autorefresh")
 
 if st.sidebar.button("Värskenda vaade"):
     st.rerun()
@@ -29,11 +27,12 @@ def get_connection():
         dbname=os.environ.get("DB_NAME", "praktikum"),
     )
 
-
 def load_dataframe(query: str) -> pd.DataFrame:
-    with get_connection() as conn:
-        return pd.read_sql_query(query, conn)
-
+    try:
+        with get_connection() as conn:
+            return pd.read_sql_query(query, conn)
+    except Exception:
+        return pd.DataFrame()
 
 def main():
     st.title("Majutusasutuste analüüs")
@@ -122,6 +121,8 @@ def main():
         hide_index=True,
     )
 
+    time.sleep(auto_refresh_seconds)
+    st.rerun()
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+main()
